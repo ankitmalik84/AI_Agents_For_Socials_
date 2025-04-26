@@ -50,7 +50,10 @@ def get_vector_store():
     # Create retriever with similarity search
     retriever = _vector_store.as_retriever(
         search_type="similarity_score_threshold",
-        search_kwargs={"k": 3, "score_threshold": 0.5},
+        search_kwargs={
+            "k": 3,                    # Get top 3 matches
+            "score_threshold": 0.5,    # Minimum similarity score
+        },
     )
     
     return retriever

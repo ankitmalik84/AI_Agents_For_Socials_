@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from app.routes import query
+from app.routes import query, upload
 from app.config import settings
 
 # Create FastAPI application
@@ -24,6 +24,7 @@ app.add_middleware(
 # Include routers directly at root level to match frontend expectations
 # Frontend expects http://localhost:8000/invoke
 app.include_router(query.router)
+app.include_router(upload.router)
 
 # Root endpoint
 @app.get("/")

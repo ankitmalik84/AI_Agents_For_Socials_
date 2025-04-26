@@ -14,3 +14,5 @@ pinecone-client==6.0.0
 openai==1.73.0
 tavily-python==0.5.4
 transformers==4.51.2
+pypdf
+python-multipart
