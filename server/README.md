@@ -32,29 +32,34 @@ sapiens-rag/
 ## Setup Instructions
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd sapiens-rag
 ```
 
 2. Set up a virtual environment:
+
 ```bash
 python -m venv venv
 source venv/bin/activate  # On Windows, use: venv\Scripts\activate
 ```
 
 3. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
 ```
 
 4. Create a `.env` file based on `.env.example` and add your API keys:
+
 ```bash
 cp .env.example .env
 # Edit .env to add your API keys
 ```
 
 5. Run the API server:
+
 ```bash
 python -m app.main
 ```
