@@ -7,7 +7,6 @@ import { useState } from "react";
 import MessageBubble, { Message } from "@/components/MessageBubble";
 import ChatWindow from "@/components/ChatWindow";
 
-
 export default function Home() {
   const [currentQuery, setCurrentQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
@@ -29,16 +28,19 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch(`http://localhost:8000/invoke`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          content: query,
-          thread_id: "234"
-        }),
-      });
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/invoke`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            content: query,
+            thread_id: "234",
+          }),
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Error fetching response");
@@ -67,7 +69,8 @@ export default function Home() {
       // Add error message to chat
       const errorMessage: Message = {
         role: "assistant",
-        content: "An error occurred while processing your request. Please try again.",
+        content:
+          "An error occurred while processing your request. Please try again.",
       };
 
       setMessages((prev) => [...prev, errorMessage]);
@@ -78,14 +81,13 @@ export default function Home() {
 
   return (
     <div
-      className={`container pt-10 pb-32 min-h-screen ${messages.length === 0 && "flex items-center justify-center"
-        }`}
+      className={`container pt-10 pb-32 min-h-screen ${
+        messages.length === 0 && "flex items-center justify-center"
+      }`}
     >
       <div className="w-full">
         {messages.length === 0 && (
-          <h1 className="text-4xl text-center mb-5">
-            Ask me a Question!
-          </h1>
+          <h1 className="text-4xl text-center mb-5">Ask me a Question!</h1>
         )}
 
         <ChatWindow messages={messages} />
@@ -95,7 +97,6 @@ export default function Home() {
           currentQuery={currentQuery}
           setCurrentQuery={setCurrentQuery}
         />
-
       </div>
     </div>
   );
