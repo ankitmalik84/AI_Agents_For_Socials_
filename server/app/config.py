@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     
     # Model settings
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o")
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4o-mini")
     
     # Retrieval settings
     CHUNK_SIZE: int = 750

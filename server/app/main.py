@@ -7,8 +7,8 @@ from app.config import settings
 
 # Create FastAPI application
 app = FastAPI(
-    title="Sapiens RAG API",
-    description="API for querying information from Sapiens book",
+    title="System Design RAG API",
+    description="API for querying information about System Design concepts, patterns, and best practices from 'System Design Interview' by Alex Xu and 'Designing Data-Intensive Applications'",
     version="0.1.0"
 )
 

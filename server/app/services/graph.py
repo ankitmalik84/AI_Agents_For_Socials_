@@ -83,26 +83,32 @@ def create_graph():
     def question_classifier(state: AgentState):
         print("Entering question_classifier")
         system_message = SystemMessage(
-            content="""You are a classifier that determines whether a user's question relates to topics covered in Yuval Noah Harari's book "Sapiens" or closely related fields.
+            content="""You are a classifier that determines whether a user's question or message should be handled by a system design expert.
+
+    Respond with 'Yes' for:
+    1. Any system design related questions (architecture, scalability, databases, etc.)
+    2. General greetings or casual conversation (like "hi", "hello", "how are you")
+    3. Questions about your capabilities or what topics you can discuss
     
-        Respond with 'Yes' if the question relates to ANY of these topics:
-        1. Human evolution and prehistoric human species
-        2. History of Homo sapiens and human civilizations
-        3. Agricultural Revolution and its impacts
-        4. Formation of societies, religions, and belief systems
-        5. Cognitive Revolution and development of language/communication
-        6. Development of economies, money, and trade
-        7. Empires, nations, and political structures throughout history
-        8. Cultural evolution and social constructs
-        9. Scientific Revolution and its effects
-        10. Anthropology, archaeology, or paleontology related to human development
-        11. Psychology of human behavior in historical context
-        12. Philosophy of history or human existence
-        
-        Additionally, respond with 'Yes' for questions that might not be directly addressed in Sapiens but are within related domains of human history, evolution, anthropology, or social sciences.
-    
-        Otherwise, respond with 'No' for questions completely unrelated to these topics (like current sports scores, technical support, etc.).
-        """
+    The main topics you're knowledgeable about include:
+    - Backend System Design
+    - Infrastructure and Scaling
+    - Reliability Engineering
+    - API and Communication
+    - Cloud and Infrastructure
+    - Distributed Systems
+    - Data Storage
+    - Event-Driven Architecture
+    - Security Architecture
+    - Observability
+    - Performance Engineering
+    - Real-world Applications
+
+    Respond with 'No' only for:
+    1. Questions completely unrelated to system design or general conversation
+    2. Questions about unrelated topics (like history, biology, sports)
+    3. Inappropriate or offensive content
+    """
         )
     
         human_message = HumanMessage(
@@ -225,16 +231,17 @@ def create_graph():
             llm,
             tools=[tavily_search],
             state_modifier="""
-            You are a research assistant helping to answer questions that couldn't be sufficiently answered using information from the book "Sapiens" by Yuval Noah Harari.
-    
+            You are a research assistant helping to answer questions that couldn't be sufficiently answered using information from System Design books, particularly "System Design Interview" by Alex Xu and "Designing Data-Intensive Applications".
+
             INSTRUCTIONS:
-            1. The user asked a question that our database couldn't answer with information from the Sapiens book.
+            1. The user asked a question that our database couldn't answer with information from our system design knowledge base.
             2. Use the Tavily search tool to find relevant and accurate information related to the question.
-            3. Focus on historical facts, human evolution, anthropology, and related topics.
-            4. Provide a complete, educational answer based on your research.
+            3. Focus on system design patterns, architectural solutions, and engineering best practices.
+            4. Provide complete, technical answers based on your research.
             5. Cite sources where appropriate.
-    
-            Your goal is to provide helpful, factual information when our primary knowledge base is insufficient.
+            6. When possible, include real-world examples of how companies have implemented similar solutions.
+
+            Your goal is to provide helpful, practical information when our primary knowledge base is insufficient.
         """
         )
     
@@ -243,27 +250,20 @@ def create_graph():
         content = result["messages"][-1].content
         state["messages"].append(AIMessage(content=content))
 
-        print(content, "research_node content")
+        print(content, "research_node content") 
     
         return state
     
     def cannot_answer(state: AgentState) -> Command[Literal["research_node", END]]:
         print("Entering cannot_answer")
-            
-        # is_approved = interrupt("The system was not able to find the answer. Your approval is needed to make an internet search. Respond with 'yes' or 'no'")
-
-        return state
+        # Directly proceed to research_node without asking for approval
+        return Command(goto="research_node")
     
-        # if is_approved: 
-        #     return Command(goto="research_node")
-        # else:
-        #     return Command(goto=END)
-        
     def off_topic_response(state: AgentState):
         print("Entering off_topic_response")
         if "messages" not in state or state["messages"] is None:
             state["messages"] = []
-        state["messages"].append(AIMessage(content="I'm sorry! I cannot answer this question as it doesn't appear to be related to the topics covered in Yuval Noah Harari's book 'Sapiens' or closely related fields."))
+        state["messages"].append(AIMessage(content="I'm sorry! I cannot answer this question as it doesn't appear to be related to system design topics, distributed systems, or software architecture principles covered in System Design books like Alex Xu's 'System Design Interview' or 'Designing Data-Intensive Applications'."))
         return state
     
     # Create the StateGraph

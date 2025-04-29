@@ -32,3 +32,8 @@ htmlcov/
 # Ignore Python compiled files
 *.pyo
 *.pyd
+
+# Ignore Pycache
+__pycache__/
+
+server/app/__pycache__/
