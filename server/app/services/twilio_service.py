@@ -8,7 +8,7 @@ twilio_client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 async def send_whatsapp_message(to_number: str, message: str):
     """Send a message through WhatsApp"""
     try:
-        # Remove any existing 'whatsapp:' prefix
+        # Remove any existing 'whatsapp:' prefix and format numbers
         to_number = to_number.replace('whatsapp:', '')
         from_number = settings.TWILIO_PHONE_NUMBER.replace('whatsapp:', '')
         

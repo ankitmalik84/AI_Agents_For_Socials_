@@ -9,6 +9,7 @@ from app.config import settings
 from app.services.rag import process_query
 from app.services.vector_store import add_documents
 from app.utils.document_processor import extract_text_from_pdf, extract_text_from_docx
+from app.services.twilio_service import send_whatsapp_message
 
 router = APIRouter()
 
@@ -18,13 +19,11 @@ twilio_client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
 # Store pending document confirmations
 pending_confirmations = {}
 
-async def handle_document_upload(conversation_sid: str, message_sid: str, media_url: str, filename: str) -> None:
+async def handle_document_upload(from_number: str, media_url: str, filename: str) -> None:
     """Handle document upload from WhatsApp"""
     try:
         # Download the file
-        response = await twilio_client.conversations.v1.conversations(conversation_sid) \
-                                                    .messages(message_sid) \
-                                                    .media.download()
+        response = await twilio_client.messages.media(media_url).fetch()
         
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_file.write(response.content)
@@ -39,14 +38,14 @@ async def handle_document_upload(conversation_sid: str, message_sid: str, media_
             raise ValueError("Unsupported file type")
 
         # Store for confirmation
-        pending_confirmations[conversation_sid] = {
+        pending_confirmations[from_number] = {
             'text': text,
             'filename': filename
         }
 
         # Ask for confirmation
         await send_whatsapp_message(
-            conversation_sid,
+            from_number,
             "I received your document. Would you like to add it to the knowledge base? (Reply 'yes' to confirm)"
         )
 
@@ -54,19 +53,6 @@ async def handle_document_upload(conversation_sid: str, message_sid: str, media_
         # Cleanup temp file
         if 'temp_path' in locals():
             os.unlink(temp_path)
-
-async def send_whatsapp_message(to_number: str, message: str):
-    """Send a message through WhatsApp"""
-    try:
-        message = twilio_client.messages.create(
-            body=message,
-            from_=f"whatsapp:{settings.TWILIO_PHONE_NUMBER}",
-            to=f"whatsapp:{to_number}"
-        )
-        return message.sid
-    except Exception as e:
-        print(f"Error sending WhatsApp message: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/twilio/webhook")
 async def twilio_webhook(request: Request):
@@ -89,7 +75,7 @@ async def twilio_webhook(request: Request):
     try:
         # Handle document upload
         if media_url and filename:
-            await handle_document_upload(from_number, form_data.get('MessageSid'), media_url, filename)
+            await handle_document_upload(from_number, media_url, filename)
             return {"success": True}
 
         # Handle confirmation response
@@ -103,7 +89,10 @@ async def twilio_webhook(request: Request):
             )
             
             # Confirm and cleanup
-            await send_whatsapp_message(from_number, f"Document '{doc_info['filename']}' has been added to the knowledge base!")
+            await send_whatsapp_message(
+                from_number,
+                f"Document '{doc_info['filename']}' has been added to the knowledge base!"
+            )
             del pending_confirmations[from_number]
             return {"success": True}
 
@@ -111,12 +100,13 @@ async def twilio_webhook(request: Request):
         if from_number not in pending_confirmations:
             result = process_query(message_body)
             response = result["messages"][-1].content if result.get("messages") else "I couldn't process your query."
-            
             await send_whatsapp_message(from_number, response)
             return {"success": True}
 
     except Exception as e:
-        await send_whatsapp_message(from_number, "Sorry, I encountered an error. Please try again.")
-        raise HTTPException(status_code=500, detail=str(e))
-
-    return {"success": True} 
+        print(f"Error processing webhook: {str(e)}")
+        await send_whatsapp_message(
+            from_number, 
+            "Sorry, I encountered an error processing your request. Please try again."
+        )
+        raise HTTPException(status_code=500, detail=str(e)) 
