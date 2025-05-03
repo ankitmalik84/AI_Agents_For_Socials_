@@ -1,73 +1,65 @@
-# System Design RAG API
+# System Design Assistant with WhatsApp Integration
 
-A Retrieval-Augmented Generation (RAG) system built with LangGraph for querying information about System Design concepts, patterns, and best practices from "System Design Interview" by Alex Xu and "Designing Data-Intensive Applications".
+An AI-powered system design assistant that combines RAG (Retrieval Augmented Generation) with WhatsApp integration for easy access to system design knowledge and best practices.
 
-## Features
+## 🚀 Features
 
-- **Intelligent Query Processing**: Uses LangGraph for structured conversation flow
-- **Real-time Streaming**: Supports Server-Sent Events (SSE) for real-time responses
-- **Advanced RAG Pipeline**: Combines vector search with online research capabilities
-- **Context-Aware Responses**: Maintains conversation context for better answers
-- **Automatic Research**: Falls back to online search when needed using Tavily
-- **System Design Focus**: Specialized in system design, distributed systems, and software architecture
+### Currently Available
 
-## Project Structure
+- ✅ **WhatsApp Integration**: Query the assistant directly through WhatsApp
+- ✅ **Document Processing**: Upload PDF/DOCX files for knowledge base expansion
+- ✅ **RAG Pipeline**: Smart retrieval and response generation
+- ✅ **API Endpoints**: RESTful and streaming interfaces
+- ✅ **Docker Support**: Easy deployment with Docker
 
-```
-system-design-rag/server/
-├── app/
-│   ├── main.py              # FastAPI application entry point
-│   ├── config.py            # Configuration settings
-│   ├── models/              # Pydantic models
-│   │   └── schemas.py       # Data models and schemas
-│   ├── routes/              # API routes
-│   │   └── query.py        # Query endpoints
-│   ├── services/           # Business logic
-│   │   ├── rag.py         # RAG service
-│   │   ├── vector_store.py # Vector store operations
-│   │   └── graph.py       # LangGraph definition
-│   └── utils/             # Utility functions
-│       └── helpers.py
-├── requirements.txt        # Dependencies
-├── Dockerfile             # Container configuration
-├── .dockerignore         # Docker ignore rules
-└── README.md             # Documentation
-```
+### 🚧 In Development
 
-## Prerequisites
+- 🔄 **Multi-language Support**: Support for different languages (Coming Soon)
+- 🔄 **Voice Messages**: WhatsApp voice message processing
+- 🔄 **Image Generation**: System architecture diagram generation
+- 🔄 **Advanced Analytics**: Usage tracking and insights
 
-- Python 3.12 or higher
-- Docker (optional)
-- API keys for:
+## 🛠️ Tech Stack
+
+- FastAPI
+- LangGraph
+- OpenAI
+- Pinecone
+- Twilio
+- Docker
+
+## 📱 WhatsApp Usage
+
+1. Send message to: **+14155238886**
+2. Available commands:
+   - Text questions about system design
+   - PDF/DOCX document uploads
+   - "help" for command list
+
+## 🔧 Development Setup
+
+### Prerequisites
+
+- Python 3.12+
+- Docker
+- API Keys:
   - OpenAI
   - Pinecone
-  - Tavily
+  - Twilio
 
-## Setup Instructions
+### Quick Start
 
-### Local Development
-
-1. Clone the repository:
-
-```bash
+````bash
+# Clone repository
 git clone <repository-url>
-cd system-design-rag/server
-```
 
-2. Create and activate virtual environment:
-
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-```
-
-3. Install dependencies:
-
-```bash
+# Setup environment
+cd server
 pip install -r requirements.txt
-```
 
-4. Create `.env` file with required API keys:
+# Configure environment variables
+cp .env.example .env
+# Add your API keys to .env
 
 ```env
 # OpenAI API
@@ -85,7 +77,7 @@ TAVILY_API_KEY=your_tavily_key
 # Model settings
 EMBEDDING_MODEL=text-embedding-3-small
 LLM_MODEL=gpt-4-turbo-preview
-```
+````
 
 5. Run the server:
 
@@ -101,89 +93,67 @@ python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 docker build -t your-username/system-design-rag:latest .
 ```
 
-2. Run the container:
+## 📚 Documentation
 
-```bash
-docker run -d -p 8000:8000 --env-file .env your-username/system-design-rag:latest
-```
+- [Server Documentation](server/README.md)
+- [API Documentation](https://your-domain.com/docs) (when server is running)
 
-## API Endpoints
+## 🌟 Key Features in Detail
 
-### Regular Query Endpoint
+### WhatsApp Integration
 
-- **POST** `/invoke`
-  - Request Body:
-    ```json
-    {
-      "content": "What is load balancing?",
-      "thread_id": "optional-thread-id"
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "answer": "Detailed response about load balancing...",
-      "success": true
-    }
-    ```
+- Direct messaging interface
+- Document upload support
+- Context-aware conversations
+- Automatic error handling
 
-### Streaming Query Endpoint
+### RAG Implementation
 
-- **GET** `/stream/{message}`
-  - Query Parameters:
-    - `thread_id` (optional): For conversation continuity
-  - Returns: Server-Sent Events (SSE) stream
-  - Event Types:
-    - `thread_id`: New conversation thread ID
-    - `content`: Response content chunks
-    - `search_results`: Research results
-    - `error`: Error messages
-    - `end`: Stream completion
+- Smart document processing
+- Vector-based retrieval
+- Context-aware responses
+- Fallback research capability
 
-## Usage Examples
+### Document Processing
 
-### Regular Query
+- PDF support
+- DOCX support
+- Text extraction
+- Knowledge base integration
 
-```python
-import requests
+## 🔜 Roadmap
 
-response = requests.post(
-    "http://localhost:8000/invoke",
-    json={
-        "content": "Explain microservices architecture",
-        "thread_id": None
-    }
-)
-print(response.json())
-```
+### Phase 1 (Current)
 
-### Streaming Query
+- ✅ Basic WhatsApp integration
+- ✅ Document upload
+- ✅ RAG implementation
+- ✅ Docker support
 
-```javascript
-const eventSource = new EventSource(
-  `http://localhost:8000/stream/Explain%20microservices%20architecture`
-);
+### Phase 2 (In Progress)
 
-eventSource.onmessage = (event) => {
-  const data = JSON.parse(event.data);
-  console.log(data.content);
-};
-```
+- 🔄 Voice message support
+- 🔄 Multi-language capabilities
+- 🔄 Image generation
+- 🔄 Enhanced error handling
 
-## Error Handling
+### Phase 3 (Planned)
 
-The API uses standard HTTP status codes:
+- 📋 Advanced analytics
+- 📋 Custom training data
+- 📋 API rate limiting
 
-- 200: Successful response
-- 400: Bad request
-- 500: Server error
+## 🤝 Contributing
 
-Detailed error messages are included in the response body.
+Contributions are welcome!
 
-## Contributing
+## 🔗 Links
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+- [Docker Hub](https://hub.docker.com/u/ankitmalik84)
+
+## 📞 Support
+
+For support:
+
+- Create an issue
+- Contact: ankitmalik844903@gmail.com
