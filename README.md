@@ -1,5 +1,9 @@
 # System Design Assistant with WhatsApp Integration
 
+<div align="center">
+  <img src="/cover.png" alt="System Design Assistant Cover" width="100%"/>
+</div>
+
 An AI-powered system design assistant that combines RAG (Retrieval Augmented Generation) with WhatsApp integration for easy access to system design knowledge and best practices.
 
 ## 🚀 Features
@@ -28,13 +32,17 @@ An AI-powered system design assistant that combines RAG (Retrieval Augmented Gen
 - Twilio
 - Docker
 
-## 📱 WhatsApp Usage
+## 📱 WhatsApp Demo
+
+<div align="center">
+  <img src="/whatsapp.png" alt="WhatsApp Integration Demo" width="300"/>
+</div>
+
+Try it yourself:
 
 1. Send message to: **+14155238886**
-2. Available commands:
-   - Text questions about system design
-   - PDF/DOCX document uploads
-   - "help" for command list
+2. Ask any system design question
+3. Upload system design documents
 
 ## 🔧 Development Setup
 
