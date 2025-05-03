@@ -23,9 +23,6 @@ def create_graph():
     # Initialize language models
     llm = ChatOpenAI(model=settings.LLM_MODEL)
     
-    # Get retriever
-    retriever = get_vector_store()
-    
     # Create RAG prompt template
     rag_template = """Answer the question based on the following context and the Chathistory. Especially take the latest question into consideration. If the context does not have the answer to the question, simply say you don't know
 
@@ -134,9 +131,19 @@ def create_graph():
     
     def retrieve(state: AgentState):
         print("Entering retrieve")
-        documents = retriever.invoke(state["rephrased_question"])
-        print(f"retrieve: Retrieved {len(documents)} documents")
-        state["documents"] = documents
+        # Get fresh retriever for each query to ensure we see new documents
+        vector_store = get_vector_store()
+        retriever = vector_store.as_retriever(
+            search_type="similarity_score_threshold",
+            search_kwargs={"k": 3, "score_threshold": 0.5},
+        )
+        try:
+            documents = retriever.invoke(state["rephrased_question"])
+            print(f"retrieve: Retrieved {len(documents)} documents")
+            state["documents"] = documents
+        except Exception as e:
+            print(f"Error during retrieval: {str(e)}")
+            state["documents"] = []
         return state
     
     def retrieval_grader(state: AgentState):
