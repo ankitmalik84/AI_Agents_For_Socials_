@@ -145,6 +145,85 @@ docker build -t your-username/system-design-rag:latest .
 
 ## 🤝 Contributing
 
+### Frontend Development
+
+We welcome frontend contributions! The project needs a modern, responsive web interface.
+
+#### Planned Frontend Features
+
+1. **Core Features**
+
+- 🎯 Real-time chat interface
+- 🎯 Document upload UI
+- 🎯 Response streaming display
+- 🎯 Syntax highlighting for code
+- 🎯 Dark/Light theme support
+
+2. **Advanced Features**
+
+- 🎯 System design diagram viewer
+- 🎯 Chat history management
+- 🎯 Document library interface
+- 🎯 User preferences settings
+- 🎯 Mobile-responsive design
+
+#### Tech Stack Requirements
+
+- React/Next.js
+- TypeScript
+- Tailwind CSS
+- WebSocket/SSE support
+- Component library (MUI/Chakra UI)
+
+#### Getting Started with Frontend
+
+1. Setup development:
+
+```bash
+# Clone the repository
+git clone https://github.com/ankitmalik84/AI_Agents_For_Socials_.git
+
+# Navigate to frontend directory
+cd client
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+2. Key areas for contribution:
+
+- Component development
+- State management
+- API integration
+- UI/UX improvements
+- Testing implementation
+
+3. Design guidelines:
+
+- Modern, clean interface
+- Responsive design
+- Accessibility compliance
+- Performance optimization
+
+### How to Contribute
+
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to your fork
+5. Create a Pull Request
+
+### Development Guidelines
+
+- Follow TypeScript best practices
+- Write unit tests for components
+- Maintain responsive design
+- Document component usage
+- Follow accessibility guidelines
+
 Contributions are welcome!
 
 ## 🔗 Links
