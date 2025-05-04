@@ -3,11 +3,19 @@ export interface StreamStatus {
   details: string;
 }
 
+export interface SearchInfo {
+  stages: string[]; // ['searching', 'reading', 'writing', 'error']
+  query: string;
+  urls: string[];
+  error?: string;
+  results?: SearchResult[];
+}
+
 export interface SearchResult {
   title: string;
   url: string;
   content: string;
-  source: "Research" | "Knowledge Base";
+  score: number;
 }
 
 export interface ResearchEvent {
@@ -18,24 +26,27 @@ export interface ResearchEvent {
 }
 
 export interface StreamResponse {
-  type: "status" | "content" | "research" | "error" | "end";
+  type:
+    | "thread_id"
+    | "content"
+    | "search_start"
+    | "search_results"
+    | "search_error"
+    | "end"
+    | "error";
+  thread_id?: string;
   content?: string;
-  status?: {
-    stage: string;
-    details: string;
-  };
-  research?: ResearchEvent;
+  query?: string;
+  results?: SearchResult[];
+  urls?: string[];
   error?: string;
 }
 
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  id?: string;
   isLoading?: boolean;
   error?: string;
-  research?: {
-    queries: string[];
-    results: SearchResult[];
-    error?: string;
-  };
+  searchInfo?: SearchInfo;
 }

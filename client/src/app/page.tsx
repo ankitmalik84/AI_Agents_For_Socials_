@@ -1,57 +1,41 @@
 "use client";
 
-import Output from "@/components/Output";
 import TextArea from "@/components/TextArea";
-import { type ChatOutput } from "@/types";
-import { useState, FormEvent, useEffect } from "react";
-import MessageBubble from "@/components/MessageBubble";
+import { useState, FormEvent } from "react";
 import ChatWindow from "@/components/ChatWindow";
-import { Message, StreamResponse } from "@/types/stream";
-
-interface StreamMessage extends Message {
-  searchInfo?: {
-    stages: string[];
-    query: string;
-    urls: string[];
-    error?: string;
-  };
-}
+import { Message, StreamResponse, SearchInfo } from "@/types/stream";
+import { v4 as uuid } from "uuid";
 
 export default function Home() {
   const [currentQuery, setCurrentQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [currentMessage, setCurrentMessage] = useState<StreamMessage | null>(
-    null
-  );
 
   const handleStream = async (e: FormEvent) => {
     e.preventDefault();
     if (!currentQuery.trim()) return;
 
+    // Add user message to the chat
     const userMessage: Message = {
       role: "user",
       content: currentQuery,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    // Generate unique ID for AI response
+    const aiResponseId = uuid();
+    let streamedContent = "";
+    let searchData: SearchInfo | null = null;
+
+    const assistantMessage: Message = {
+      id: aiResponseId,
+      role: "assistant",
+      content: "",
+      isLoading: true,
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setCurrentQuery("");
-    setIsLoading(true);
 
     try {
-      const assistantMessage: Message = {
-        role: "assistant",
-        content: "",
-        isLoading: true,
-        research: {
-          queries: [],
-          results: [],
-        },
-      };
-
-      setCurrentMessage(assistantMessage);
-      setMessages((prev) => [...prev, assistantMessage]);
-
       const response = new EventSource(
         `${process.env.NEXT_PUBLIC_API_URL}/stream/${encodeURIComponent(
           userMessage.content
@@ -61,108 +45,117 @@ export default function Home() {
       response.onmessage = (event) => {
         try {
           const data: StreamResponse = JSON.parse(event.data);
+          console.log("Received event:", data);
 
-          setCurrentMessage((prev) => {
-            if (!prev) return null;
+          switch (data.type) {
+            case "content":
+              if (data.content) {
+                streamedContent += data.content;
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  isLoading: true,
+                });
+              }
+              break;
 
-            switch (data.type) {
-              case "content":
-                return {
-                  ...prev,
-                  content: prev.content + (data.content || ""),
+            case "search_start":
+              if (data.query) {
+                const newSearchInfo: SearchInfo = {
+                  stages: ["searching"],
+                  query: data.query,
+                  urls: [],
                 };
+                searchData = newSearchInfo;
+                updateMessage(aiResponseId, {
+                  searchInfo: newSearchInfo,
+                });
+              }
+              break;
 
-              case "research":
-                if (!data.research) return prev;
-
-                const research = prev.research || { queries: [], results: [] };
-
-                switch (data.research.type) {
-                  case "query":
-                    return {
-                      ...prev,
-                      research: {
-                        ...research,
-                        queries: [...research.queries, data.research.query!],
-                      },
-                    };
-
-                  case "result":
-                    return {
-                      ...prev,
-                      research: {
-                        ...research,
-                        results: [
-                          ...research.results,
-                          ...(data.research.results || []),
-                        ],
-                      },
-                    };
-
-                  case "error":
-                    return {
-                      ...prev,
-                      research: {
-                        ...research,
-                        error: data.research.message,
-                      },
-                    };
-
-                  default:
-                    return prev;
-                }
-
-              case "end":
-                return {
-                  ...prev,
-                  isLoading: false,
+            case "search_results":
+              if (searchData && data.results) {
+                const newSearchInfo: SearchInfo = {
+                  stages: ["searching", "reading"],
+                  query: searchData.query,
+                  urls: data.urls || [],
+                  results: data.results,
                 };
+                searchData = newSearchInfo;
 
-              case "error":
-                return {
-                  ...prev,
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  searchInfo: newSearchInfo,
+                  isLoading: true,
+                });
+              }
+              break;
+
+            case "search_error":
+              if (searchData) {
+                const newSearchInfo: SearchInfo = {
+                  stages: [...searchData.stages, "error"],
+                  query: searchData.query,
+                  urls: searchData.urls,
                   error: data.error,
-                  isLoading: false,
                 };
+                searchData = newSearchInfo;
+                updateMessage(aiResponseId, {
+                  searchInfo: newSearchInfo,
+                });
+              }
+              break;
 
-              default:
-                return prev;
-            }
-          });
+            case "end":
+              if (searchData) {
+                const finalSearchInfo: SearchInfo = {
+                  ...searchData,
+                  stages: ["searching", "reading", "writing"],
+                };
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  searchInfo: finalSearchInfo,
+                  isLoading: false,
+                });
+              } else {
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  isLoading: false,
+                });
+              }
+              response.close();
+              break;
+
+            case "error":
+              updateMessage(aiResponseId, {
+                error: data.error,
+                isLoading: false,
+              });
+              response.close();
+              break;
+          }
         } catch (error) {
-          console.error("Error parsing SSE data:", error);
+          console.error("Error parsing event data:", error);
         }
       };
 
       response.onerror = (error) => {
-        console.error("SSE error:", error);
+        console.error("EventSource error:", error);
         response.close();
-        setIsLoading(false);
       };
     } catch (error) {
       console.error("Error:", error);
-      setIsLoading(false);
     }
   };
 
-  // Update messages when currentMessage changes
-  useEffect(() => {
-    if (currentMessage) {
-      setMessages((prev) => [...prev.slice(0, -1), currentMessage]);
-    }
-  }, [currentMessage]);
+  const updateMessage = (id: string, updates: Partial<Message>) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === id ? { ...msg, ...updates } : msg))
+    );
+  };
 
   return (
-    <div
-      className={`container pt-10 pb-32 min-h-screen ${
-        messages.length === 0 && "flex items-center justify-center"
-      }`}
-    >
-      <div className="w-full">
-        {messages.length === 0 && (
-          <h1 className="text-4xl text-center mb-5">Ask me a Question!</h1>
-        )}
-
+    <main className="min-h-screen bg-gray-50">
+      <div className="container max-w-4xl mx-auto pt-6 pb-32">
         <ChatWindow messages={messages} />
 
         <TextArea
@@ -171,6 +164,6 @@ export default function Home() {
           setCurrentQuery={setCurrentQuery}
         />
       </div>
-    </div>
+    </main>
   );
 }

@@ -1,4 +1,4 @@
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, AIMessage
 from app.services.graph import create_graph
 from app.services.vector_store import get_vector_store
 from typing import AsyncGenerator
@@ -65,18 +65,67 @@ async def process_query_stream(content: str, thread_id: str = None) -> AsyncGene
             event_type = event["event"]
             
             if event_type == "on_chat_model_stream":
+                # Handle normal chat model responses
                 chunk = event["data"]["chunk"]
                 if hasattr(chunk, "content"):
-                    yield f"data: {{\"type\": \"content\", \"content\": \"{chunk.content}\"}}\n\n"
+                    content = chunk.content
+                    if (not any(skip in content for skip in [
+                        "WARNING:", "INFO:", "ERROR:",
+                        "Entering", "research_node",
+                        "StatReload"
+                    ]) and content.strip() and 
+                        not content.strip().startswith('{"score":') and
+                        not content.strip() in ['{"', '"', '"}', '":"', 'score', 'Yes', 'No', '}']):
+                        
+                        content = content.replace('"', '\\"').replace("\n", "\\n")
+                        yield f"data: {{\"type\": \"content\", \"content\": \"{content}\"}}\n\n"
             
-            elif event_type == "on_tool_end" and event.get("name") == "tavily_search":
-                # Handle search results
-                results = event["data"]["output"]
-                yield f"data: {{\"type\": \"search_results\", \"results\": {json.dumps(results)}}}\n\n"
+            elif event_type == "on_chat_model_end":
+                # Check for tool calls related to search
+                if "output" in event["data"] and hasattr(event["data"]["output"], "tool_calls"):
+                    tool_calls = event["data"]["output"].tool_calls
+                    search_calls = [call for call in tool_calls if call.get("name") == "tavily_search_results_json"]
+                    
+                    if search_calls:
+                        # Signal search is starting
+                        search_query = search_calls[0]["args"].get("query", "")
+                        safe_query = search_query.replace('"', '\\"').replace("'", "\\'").replace("\n", "\\n")
+                        yield f"data: {{\"type\": \"search_start\", \"query\": \"{safe_query}\"}}\n\n"
+            
+            elif event_type == "on_tool_end" and event.get("name") == "tavily_search_results_json":
+                try:
+                    # Extract search results from the ToolMessage
+                    tool_message = event["data"]["output"]
+                    if hasattr(tool_message, "content"):
+                        # Parse the JSON string content
+                        results = json.loads(tool_message.content)
+                        
+                        # Process each result
+                        processed_results = []
+                        for result in results:
+                            processed_result = {
+                                "title": result.get("title", "").replace('"', '\\"').replace("\n", "\\n"),
+                                "url": result.get("url", ""),
+                                "content": result.get("content", "").replace('"', '\\"').replace("\n", "\\n"),
+                                "score": result.get("score", 0)
+                            }
+                            processed_results.append(processed_result)
+                        
+                        # Send a single search_results event with both results and urls
+                        results_json = json.dumps({
+                            "type": "search_results",
+                            "results": processed_results,
+                            "urls": [result["url"] for result in processed_results]
+                        })
+                        yield f"data: {results_json}\n\n"
+                except Exception as e:
+                    print(f"Error processing search results: {str(e)}")
+                    error_msg = str(e).replace('"', '\\"').replace("\n", "\\n")
+                    yield f"data: {{\"type\": \"search_error\", \"error\": \"{error_msg}\"}}\n\n"
 
         # Send end event
         yield f"data: {{\"type\": \"end\"}}\n\n"
         
     except Exception as e:
         error_msg = str(e).replace('"', '\\"').replace("\n", "\\n")
-        yield f"data: {{\"type\": \"error\", \"content\": \"{error_msg}\"}}\n\n"
+        yield f"data: {{\"type\": \"error\", \"error\": \"{error_msg}\"}}\n\n"
