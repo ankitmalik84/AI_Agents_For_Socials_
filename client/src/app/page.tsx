@@ -1,103 +1,169 @@
 "use client";
 
-import Output from "@/components/Output";
 import TextArea from "@/components/TextArea";
-import { type ChatOutput } from "@/types";
-import { useState } from "react";
-import MessageBubble, { Message } from "@/components/MessageBubble";
+import { useState, FormEvent } from "react";
 import ChatWindow from "@/components/ChatWindow";
+import { Message, StreamResponse, SearchInfo } from "@/types/stream";
+import { v4 as uuid } from "uuid";
 
 export default function Home() {
   const [currentQuery, setCurrentQuery] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent, query: string) => {
+  const handleStream = async (e: FormEvent) => {
     e.preventDefault();
-
-    if (!query.trim()) return;
+    if (!currentQuery.trim()) return;
 
     // Add user message to the chat
     const userMessage: Message = {
       role: "user",
-      content: query,
+      content: currentQuery,
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    // Generate unique ID for AI response
+    const aiResponseId = uuid();
+    let streamedContent = "";
+    let searchData: SearchInfo | null = null;
+
+    const assistantMessage: Message = {
+      id: aiResponseId,
+      role: "assistant",
+      content: "",
+      isLoading: true,
+    };
+
+    setMessages((prev) => [...prev, userMessage, assistantMessage]);
     setCurrentQuery("");
-    setIsLoading(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/invoke`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            content: query,
-            thread_id: "234",
-          }),
-        }
+      const response = new EventSource(
+        `${process.env.NEXT_PUBLIC_API_URL}/stream/${encodeURIComponent(
+          userMessage.content
+        )}`
       );
 
-      if (!response.ok) {
-        throw new Error("Error fetching response");
-      }
+      response.onmessage = (event) => {
+        try {
+          const data: StreamResponse = JSON.parse(event.data);
+          console.log("Received event:", data);
 
-      const data = await response.json();
+          switch (data.type) {
+            case "content":
+              if (data.content) {
+                streamedContent += data.content;
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  isLoading: true,
+                });
+              }
+              break;
 
-      if (data && data.answer) {
-        const aiMessage: Message = {
-          role: "assistant",
-          content: data.answer,
-        };
+            case "search_start":
+              if (data.query) {
+                const newSearchInfo: SearchInfo = {
+                  stages: ["searching"],
+                  query: data.query,
+                  urls: [],
+                };
+                searchData = newSearchInfo;
+                updateMessage(aiResponseId, {
+                  searchInfo: newSearchInfo,
+                });
+              }
+              break;
 
-        setMessages((prev) => [...prev, aiMessage]);
-      } else {
-        const errorMessage: Message = {
-          role: "assistant",
-          content: "Sorry, I couldn't process your request at this time.",
-        };
+            case "search_results":
+              if (searchData && data.results) {
+                const newSearchInfo: SearchInfo = {
+                  stages: ["searching", "reading"],
+                  query: searchData.query,
+                  urls: data.urls || [],
+                  results: data.results,
+                };
+                searchData = newSearchInfo;
 
-        setMessages((prev) => [...prev, errorMessage]);
-      }
-    } catch (error) {
-      console.error(error);
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  searchInfo: newSearchInfo,
+                  isLoading: true,
+                });
+              }
+              break;
 
-      // Add error message to chat
-      const errorMessage: Message = {
-        role: "assistant",
-        content:
-          "An error occurred while processing your request. Please try again.",
+            case "search_error":
+              if (searchData) {
+                const newSearchInfo: SearchInfo = {
+                  stages: [...searchData.stages, "error"],
+                  query: searchData.query,
+                  urls: searchData.urls,
+                  error: data.error,
+                };
+                searchData = newSearchInfo;
+                updateMessage(aiResponseId, {
+                  searchInfo: newSearchInfo,
+                });
+              }
+              break;
+
+            case "end":
+              if (searchData) {
+                const finalSearchInfo: SearchInfo = {
+                  ...searchData,
+                  stages: ["searching", "reading", "writing"],
+                };
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  searchInfo: finalSearchInfo,
+                  isLoading: false,
+                });
+              } else {
+                updateMessage(aiResponseId, {
+                  content: streamedContent,
+                  isLoading: false,
+                });
+              }
+              response.close();
+              break;
+
+            case "error":
+              updateMessage(aiResponseId, {
+                error: data.error,
+                isLoading: false,
+              });
+              response.close();
+              break;
+          }
+        } catch (error) {
+          console.error("Error parsing event data:", error);
+        }
       };
 
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
+      response.onerror = (error) => {
+        console.error("EventSource error:", error);
+        response.close();
+      };
+    } catch (error) {
+      console.error("Error:", error);
     }
   };
 
-  return (
-    <div
-      className={`container pt-10 pb-32 min-h-screen ${
-        messages.length === 0 && "flex items-center justify-center"
-      }`}
-    >
-      <div className="w-full">
-        {messages.length === 0 && (
-          <h1 className="text-4xl text-center mb-5">Ask me a Question!</h1>
-        )}
+  const updateMessage = (id: string, updates: Partial<Message>) => {
+    setMessages((prev) =>
+      prev.map((msg) => (msg.id === id ? { ...msg, ...updates } : msg))
+    );
+  };
 
+  return (
+    <main className="min-h-screen bg-gray-50">
+      <div className="container max-w-4xl mx-auto pt-6 pb-32">
         <ChatWindow messages={messages} />
 
         <TextArea
-          onSubmit={handleSubmit}
+          onSubmit={handleStream}
           currentQuery={currentQuery}
           setCurrentQuery={setCurrentQuery}
         />
       </div>
-    </div>
+    </main>
   );
 }

@@ -14,7 +14,7 @@ from app.models.schemas import AgentState, GradeQuestion, GradeDocument
 from app.services.vector_store import get_vector_store
 
 # Initialize tools
-tavily_search = TavilySearchResults(max_results=2)
+tavily_search = TavilySearchResults(max_results=5)
 
 def create_graph():
     """
@@ -83,14 +83,13 @@ def create_graph():
     def question_classifier(state: AgentState):
         print("Entering question_classifier")
         system_message = SystemMessage(
-            content="""You are a classifier that determines whether a user's question or message should be handled by a system design expert.
+            content="""You are a classifier that determines whether a user's message should be handled by a system design expert.
 
-    Respond with 'Yes' for:
-    1. Any system design related questions (architecture, scalability, databases, etc.)
-    2. General greetings or casual conversation (like "hi", "hello", "how are you")
-    3. Questions about your capabilities or what topics you can discuss
-    
-    The main topics you're knowledgeable about include:
+Respond with 'Yes' for:
+1. Technical questions about system design (architecture, scalability, databases, etc.)
+2. Questions seeking specific system design advice or solutions
+
+  The main topics you're knowledgeable about include:
     - Backend System Design
     - Infrastructure and Scaling
     - Reliability Engineering
@@ -104,11 +103,14 @@ def create_graph():
     - Performance Engineering
     - Real-world Applications
 
-    Respond with 'No' only for:
-    1. Questions completely unrelated to system design or general conversation
-    2. Questions about unrelated topics (like history, biology, sports)
-    3. Inappropriate or offensive content
-    """
+Respond with 'No' for:
+1. Questions about identity (who you are, who created you)
+2. General greetings or casual conversation
+3. Questions unrelated to technical system design
+4. Random text or gibberish
+5. Programming questions not related to system design
+
+When evaluating, first check if the input is coherent, meaningful text. If it's random characters or gibberish, respond with 'No'."""
         )
     
         human_message = HumanMessage(
@@ -259,11 +261,27 @@ def create_graph():
         # Directly proceed to research_node without asking for approval
         return Command(goto="research_node")
     
-    def off_topic_response(state: AgentState):
+    async def off_topic_response(state: AgentState):
         print("Entering off_topic_response")
         if "messages" not in state or state["messages"] is None:
             state["messages"] = []
-        state["messages"].append(AIMessage(content="I'm sorry! I cannot answer this question as it doesn't appear to be related to system design topics, distributed systems, or software architecture principles covered in System Design books like Alex Xu's 'System Design Interview' or 'Designing Data-Intensive Applications'."))
+
+        system_prompt = """You are a specialized System Design AI Assistant developed by Ankit Malik. You are trained on system design books like Alex Xu's 'System Design Interview' and 'Designing Data-Intensive Applications'.
+
+For general questions about your identity:
+- You were developed by Ankit Malik
+- Emphasize your expertise in system design
+- Explain you can help with system architecture, distributed systems, databases, etc.
+- Be friendly but maintain professional focus on system design
+
+Current question: {question}
+
+Respond naturally while maintaining your identity as Ankit's System Design AI Assistant."""
+
+        response = await llm.ainvoke(system_prompt)
+        state["messages"].append(
+            AIMessage(content=response.content, metadata={"off_topic": True})
+        )
         return state
     
     # Create the StateGraph

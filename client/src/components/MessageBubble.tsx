@@ -1,40 +1,58 @@
-import MarkdownRenderer from "@/components/MarkdownRenderer";
-
-export interface Message {
-    role: "user" | "assistant";
-    content: string;
-}
+import { Message } from "@/types/stream";
+import SearchResults from "./SearchResults";
+import ReactMarkdown from "react-markdown";
 
 interface MessageBubbleProps {
-    message: Message;
+  message: Message;
 }
 
-const MessageBubble = ({ message }: MessageBubbleProps) => {
-    const isUser = message.role === "user";
+export default function MessageBubble({ message }: MessageBubbleProps) {
+  const isAssistant = message.role === "assistant";
 
-    return (
+  return (
+    <div
+      className={`flex ${isAssistant ? "justify-start" : "justify-end"} mb-4`}
+    >
+      <div
+        className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${
+          isAssistant
+            ? "bg-white border border-gray-200"
+            : "bg-gradient-to-r from-blue-600 to-blue-700 text-white"
+        }`}
+      >
+        {isAssistant && message.searchInfo && (
+          <SearchResults
+            query={message.searchInfo.query}
+            results={message.searchInfo.results}
+            isSearching={
+              message.searchInfo.stages.includes("searching") &&
+              !message.searchInfo.stages.includes("writing")
+            }
+          />
+        )}
+
         <div
-            className={`flex ${isUser ? "justify-end" : "justify-start"} mb-4`}
+          className={`prose ${
+            isAssistant ? "prose-gray" : "prose-invert"
+          } max-w-none`}
         >
-            <div
-                className={`max-w-[80%] p-4 rounded-lg ${isUser
-                    ? "bg-blue-600 text-white rounded-tr-none"
-                    : "bg-gray-800 rounded-tl-none"
-                    }`}
-            >
-                {isUser ? (
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                ) : (
-                    <div
-                        className="prose dark:prose-invert prose-pre:whitespace-pre-wrap"
-                        style={{ overflowWrap: "anywhere" }}
-                    >
-                        <MarkdownRenderer content={message.content} />
-                    </div>
-                )}
-            </div>
+          <ReactMarkdown>{message.content}</ReactMarkdown>
         </div>
-    );
-};
 
-export default MessageBubble;
+        {message.isLoading && (
+          <div className="mt-2 flex items-center space-x-1">
+            <div className="w-2 h-2 rounded-full bg-current animate-bounce"></div>
+            <div className="w-2 h-2 rounded-full bg-current animate-bounce delay-100"></div>
+            <div className="w-2 h-2 rounded-full bg-current animate-bounce delay-200"></div>
+          </div>
+        )}
+
+        {message.error && (
+          <div className="mt-2 text-red-500 text-sm font-medium">
+            Error: {message.error}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
