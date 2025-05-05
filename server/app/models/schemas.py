@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, TypedDict
+from typing import Dict, List, Optional, TypedDict, Literal
 from pydantic import BaseModel, Field
 
 # Request models
@@ -25,13 +25,25 @@ class AgentState(TypedDict):
     proceed_to_generate: bool
     rephrase_count: int
     question: dict
+    workflow_type: str
 
 class GradeQuestion(BaseModel):
     score: str = Field(
         description="Question is about the specified topics? If yes -> 'Yes' if not -> 'No'"
     )
 
+# Add this class near the top with other schema definitions
+class WorkflowType(BaseModel):
+    type: Literal["system_design", "casual", "off_topic"]
+
 class GradeDocument(BaseModel):
     score: str = Field(
         description="Document is relevant to the question? If yes -> 'Yes' if not -> 'No'"
     )
+
+# Add these classes to schemas.py
+class ConversationResponse(BaseModel):
+    response: str = Field(description="The conversation response")
+
+class OffTopicResponse(BaseModel):
+    response: str = Field(description="The off-topic response message")

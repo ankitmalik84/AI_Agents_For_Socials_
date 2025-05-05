@@ -8,17 +8,21 @@ from langgraph.checkpoint.memory import MemorySaver
 from langgraph.prebuilt import create_react_agent
 from langgraph.types import Command, interrupt
 from langchain_community.tools.tavily_search import TavilySearchResults
+from pydantic import BaseModel
+
 
 from app.config import settings
-from app.models.schemas import AgentState, GradeQuestion, GradeDocument
+from app.models.schemas import AgentState, GradeQuestion, GradeDocument, WorkflowType, ConversationResponse, OffTopicResponse
 from app.services.vector_store import get_vector_store
 
 # Initialize tools
 tavily_search = TavilySearchResults(max_results=5)
 
+
+
 def create_graph():
     """
-    Create the LangGraph for the RAG application
+    Create the LangGraph for the RAG application with specialized workflows
     """
     # Initialize language models
     llm = ChatOpenAI(model=settings.LLM_MODEL)
@@ -79,60 +83,6 @@ def create_graph():
         else:
             state["rephrased_question"] = state["question"].content
         return state
-    
-    def question_classifier(state: AgentState):
-        print("Entering question_classifier")
-        system_message = SystemMessage(
-            content="""You are a classifier that determines whether a user's message should be handled by a system design expert.
-
-Respond with 'Yes' for:
-1. Technical questions about system design (architecture, scalability, databases, etc.)
-2. Questions seeking specific system design advice or solutions
-
-  The main topics you're knowledgeable about include:
-    - Backend System Design
-    - Infrastructure and Scaling
-    - Reliability Engineering
-    - API and Communication
-    - Cloud and Infrastructure
-    - Distributed Systems
-    - Data Storage
-    - Event-Driven Architecture
-    - Security Architecture
-    - Observability
-    - Performance Engineering
-    - Real-world Applications
-
-Respond with 'No' for:
-1. Questions about identity (who you are, who created you)
-2. General greetings or casual conversation
-3. Questions unrelated to technical system design
-4. Random text or gibberish
-5. Programming questions not related to system design
-
-When evaluating, first check if the input is coherent, meaningful text. If it's random characters or gibberish, respond with 'No'."""
-        )
-    
-        human_message = HumanMessage(
-            content=f"User question: {state['rephrased_question']}"
-        )
-        grade_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
-        structured_llm = llm.with_structured_output(GradeQuestion)
-        grader_llm = grade_prompt | structured_llm
-        result = grader_llm.invoke({})
-        state["on_topic"] = result.score.strip()
-        print(f"question_classifier: on_topic = {state['on_topic']}")
-        return state
-    
-    def on_topic_router(state: AgentState):
-        print("Entering on_topic_router")
-        on_topic = state.get("on_topic", "").strip().lower()
-        if on_topic == "yes":
-            print("Routing to retrieve")
-            return "retrieve"
-        else:
-            print("Routing to off_topic_response")
-            return "off_topic_response"
     
     def retrieve(state: AgentState):
         print("Entering retrieve")
@@ -261,53 +211,144 @@ When evaluating, first check if the input is coherent, meaningful text. If it's 
         # Directly proceed to research_node without asking for approval
         return Command(goto="research_node")
     
-    async def off_topic_response(state: AgentState):
-        print("Entering off_topic_response")
-        if "messages" not in state or state["messages"] is None:
-            state["messages"] = []
-
-        system_prompt = """You are a specialized System Design AI Assistant developed by Ankit Malik. You are trained on system design books like Alex Xu's 'System Design Interview' and 'Designing Data-Intensive Applications'.
-
-For general questions about your identity:
-- You were developed by Ankit Malik
-- Emphasize your expertise in system design
-- Explain you can help with system architecture, distributed systems, databases, etc.
-- Be friendly but maintain professional focus on system design
-
-Current question: {question}
-
-Respond naturally while maintaining your identity as Ankit's System Design AI Assistant."""
-
-        response = await llm.ainvoke(system_prompt)
-        state["messages"].append(
-            AIMessage(content=response.content, metadata={"off_topic": True})
+   
+    def workflow_manager(state: AgentState):
+        """
+        Initial manager that determines which workflow to follow
+        """
+        print("Entering workflow_manager")
+        
+        # Initialize state if needed
+        if not isinstance(state, dict):
+            state = {}
+        
+        # Initialize workflow_type if not present
+        if 'workflow_type' not in state:
+            state['workflow_type'] = ''
+        
+        system_message = SystemMessage(
+            content="""You are a workflow manager that classifies user messages into specific categories.
+            You must respond with exactly one of these categories:
+            - "system_design" - For technical questions about system design, architecture, scalability, etc.
+            - "casual" - For general greetings, casual conversation, or questions about identity
+            - "off_topic" - For questions completely unrelated to system design or casual conversation
+            
+            Base your decision on the following criteria:
+            - System Design: Technical questions about architecture, scalability, databases, distributed systems
+            - Casual: Greetings, identity questions, general conversation about AI or the assistant
+            - Off Topic: Questions about unrelated topics or nonsensical input
+            """
         )
+        
+        human_message = HumanMessage(
+            content=f"Classify this message: {state['question'].content}"
+        )
+        
+        classification_prompt = ChatPromptTemplate.from_messages([system_message, human_message])
+        structured_llm = llm.with_structured_output(WorkflowType)
+        grader_llm = classification_prompt | structured_llm
+        result = grader_llm.invoke({})
+        
+        
+        state['workflow_type'] = result.type
         return state
-    
+
+    def workflow_router(state: AgentState):
+        """
+        Routes to specific workflow based on classification
+        """
+        workflow_type = state.get('workflow_type', '')
+        print(f"workflow_router: Received type: '{workflow_type}'")
+        print(f"workflow_router: Type comparison: {workflow_type == 'casual'}")
+        
+        if workflow_type == 'system_design':
+            return "system_design_workflow"
+        elif workflow_type == 'casual':
+            return "casual_workflow"
+        else:
+            return "off_topic_workflow"
+
+    def casual_conversation_handler(state: AgentState):
+        """
+        Handles casual conversations and identity questions
+        """
+        print("Entering casual_conversation_handler")
+        if "messages" not in state:
+            state["messages"] = []
+        
+        system_prompt = """You are a friendly AI assistant specialized in system design, created by Ankit Malik.
+        While your main expertise is in system design, you can engage in casual conversation while maintaining your identity.
+        
+        - Be friendly and professional
+        - Mention your system design expertise when appropriate
+        - If the conversation allows, try to steer it towards technical discussions
+        """
+        
+        human_message = HumanMessage(content=state['question'].content)
+        conversation_prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content=system_prompt),
+            human_message
+        ])
+        
+        structured_llm = llm.with_structured_output(ConversationResponse)
+        grader_llm = conversation_prompt | structured_llm
+        result = grader_llm.invoke({})
+        state["messages"].append(AIMessage(content=result.response))
+        return state
+
+    def off_topic_handler(state: AgentState):
+        """
+        Handles completely off-topic questions
+        """
+        print("Entering off_topic_handler")
+        if "messages" not in state:
+            state["messages"] = []
+        
+        system_prompt = """You are a focused system design AI assistant.
+        Politely explain that you're specialized in system design and technical architecture discussions.
+        Suggest redirecting the conversation to system design topics.
+        """
+        
+        human_message = HumanMessage(content=state['question'].content)
+        off_topic_prompt = ChatPromptTemplate.from_messages([
+            SystemMessage(content=system_prompt),
+            human_message
+        ])
+        
+        structured_llm = llm.with_structured_output(OffTopicResponse)
+        grader_llm = off_topic_prompt | structured_llm
+        result = grader_llm.invoke({})
+        state["messages"].append(AIMessage(content=result.response))
+        return state
+
     # Create the StateGraph
     workflow = StateGraph(AgentState)
     
     # Add nodes
+    workflow.add_node("workflow_manager", workflow_manager)
     workflow.add_node("question_rewriter", question_rewriter)
-    workflow.add_node("question_classifier", question_classifier)
-    workflow.add_node("off_topic_response", off_topic_response)
     workflow.add_node("retrieve", retrieve)
     workflow.add_node("retrieval_grader", retrieval_grader)
     workflow.add_node("generate_answer", generate_answer)
     workflow.add_node("refine_question", refine_question)
     workflow.add_node("cannot_answer", cannot_answer)
     workflow.add_node("research_node", research_node)
-    
-    # Add edges
-    workflow.add_edge("question_rewriter", "question_classifier")
+    workflow.add_node("casual_conversation_handler", casual_conversation_handler)
+    workflow.add_node("off_topic_handler", off_topic_handler)
+
+    # Add conditional edges for workflow routing
     workflow.add_conditional_edges(
-        "question_classifier",
-        on_topic_router,
+        "workflow_manager",
+        workflow_router,
         {
-            "retrieve": "retrieve",
-            "off_topic_response": "off_topic_response",
+            "system_design_workflow": "question_rewriter",
+            "casual_workflow": "casual_conversation_handler",
+            "off_topic_workflow": "off_topic_handler"
         },
     )
+
+    # System design workflow edges - simplified
+    workflow.add_edge("question_rewriter", "retrieve")
     workflow.add_edge("retrieve", "retrieval_grader")
     workflow.add_conditional_edges(
         "retrieval_grader",
@@ -315,15 +356,20 @@ Respond naturally while maintaining your identity as Ankit's System Design AI As
         {
             "generate_answer": "generate_answer",
             "refine_question": "refine_question",
-            "cannot_answer": "cannot_answer",  
+            "cannot_answer": "cannot_answer",
         },
     )
     workflow.add_edge("refine_question", "retrieve")
     workflow.add_edge("generate_answer", END)
     workflow.add_edge("cannot_answer", "research_node")
     workflow.add_edge("research_node", END)
-    workflow.add_edge("off_topic_response", END)
-    workflow.set_entry_point("question_rewriter")
+    
+    # Direct endings for other workflows
+    workflow.add_edge("casual_conversation_handler", END)
+    workflow.add_edge("off_topic_handler", END)
+    
+    # Set entry point
+    workflow.set_entry_point("workflow_manager")
     
     # Compile the graph
     graph = workflow.compile(checkpointer=checkpointer)
