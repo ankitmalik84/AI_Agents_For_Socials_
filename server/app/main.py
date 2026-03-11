@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from app.routes import query
+from app.routes import query, upload, twilio_webhook
 from app.config import settings
 
 # Create FastAPI application
@@ -19,11 +19,14 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Type"],
 )
 
 # Include routers directly at root level to match frontend expectations
 # Frontend expects http://localhost:8000/invoke
 app.include_router(query.router)
+app.include_router(upload.router)
+app.include_router(twilio_webhook.router)
 
 # Root endpoint
 @app.get("/")

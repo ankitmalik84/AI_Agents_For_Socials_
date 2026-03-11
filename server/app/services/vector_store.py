@@ -2,6 +2,8 @@ import time
 from pinecone import Pinecone, ServerlessSpec
 from langchain_openai import OpenAIEmbeddings
 from langchain_pinecone import PineconeVectorStore
+from typing import List, Optional
+from fastapi import HTTPException
 
 from app.config import settings
 
@@ -47,10 +49,32 @@ def get_vector_store():
     # Create the vector store
     _vector_store = PineconeVectorStore(index=index, embedding=embeddings)
     
-    # Create retriever with similarity search
-    retriever = _vector_store.as_retriever(
-        search_type="similarity_score_threshold",
-        search_kwargs={"k": 3, "score_threshold": 0.5},
-    )
-    
-    return retriever
+    return _vector_store
+
+def add_documents(texts: List[str], metadatas: Optional[List[dict]] = None):
+    """
+    Add documents to the vector store with error handling
+    """
+    try:
+        vector_store = get_vector_store()
+        
+        # Validate inputs
+        if not texts:
+            raise ValueError("No texts provided for embedding")
+        
+        if metadatas and len(metadatas) != len(texts):
+            raise ValueError("Number of metadata items must match number of texts")
+        
+        # Add texts to vector store
+        vector_store.add_texts(
+            texts=texts,
+            metadatas=metadatas or [{} for _ in texts]
+        )
+        print(f"Successfully added {len(texts)} documents to vector store")
+        
+    except Exception as e:
+        print(f"Error adding documents to vector store: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to add documents to vector store: {str(e)}"
+        )

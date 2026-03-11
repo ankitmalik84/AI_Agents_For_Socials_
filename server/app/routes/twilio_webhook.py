@@ -1,0 +1,126 @@
+from fastapi import APIRouter, Request, HTTPException
+from twilio.rest import Client
+from twilio.request_validator import RequestValidator
+import tempfile
+import os
+from typing import Optional
+from fastapi.responses import JSONResponse
+
+from app.config import settings
+from app.services.rag import process_query
+from app.services.vector_store import add_documents
+from app.utils.document_processor import extract_text_from_pdf, extract_text_from_docx
+from app.services.twilio_service import send_whatsapp_message
+
+router = APIRouter()
+
+# Initialize Twilio client
+twilio_client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+
+# Store pending document confirmations
+pending_confirmations = {}
+
+async def handle_document_upload(from_number: str, media_url: str, filename: str) -> None:
+    """Handle document upload from WhatsApp"""
+    try:
+        # Download the file
+        response = await twilio_client.messages.media(media_url).fetch()
+        
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file.write(response.content)
+            temp_path = temp_file.name
+
+        # Extract text based on file type
+        if filename.lower().endswith('.pdf'):
+            text = extract_text_from_pdf(temp_path)
+        elif filename.lower().endswith(('.docx', '.doc')):
+            text = extract_text_from_docx(temp_path)
+        else:
+            raise ValueError("Unsupported file type")
+
+        # Store for confirmation
+        pending_confirmations[from_number] = {
+            'text': text,
+            'filename': filename
+        }
+
+        # Ask for confirmation
+        await send_whatsapp_message(
+            from_number,
+            "I received your document. Would you like to add it to the knowledge base? (Reply 'yes' to confirm)"
+        )
+
+    finally:
+        # Cleanup temp file
+        if 'temp_path' in locals():
+            os.unlink(temp_path)
+
+@router.post("/twilio/webhook")
+@router.get("/twilio/webhook")  # Keep both for now until we debug
+async def twilio_webhook(request: Request):
+    """Handle incoming WhatsApp messages through Twilio"""
+    try:
+        # Debug logging
+        print(f"Request method: {request.method}")
+        print(f"Headers: {request.headers}")
+        
+        if request.method == "GET":
+            params = dict(request.query_params)
+            print(f"GET params: {params}")
+            event_type = params.get('EventType')
+            
+            if event_type == 'onMessageAdd':
+                # Handle the message
+                from_number = params.get('Author', '').replace('whatsapp:', '')
+                body = params.get('Body', '')
+                
+                print(f"Processing message from {from_number}: {body}")
+                
+                # Process the message
+                result = process_query(body)
+                response = result["messages"][-1].content if result.get("messages") else "I couldn't process your query."
+                await send_whatsapp_message(from_number, response)
+                
+            return {"success": True}
+
+        # Handle POST requests (actual messages)
+        form_data = await request.form()
+        print(f"POST form data: {form_data}")
+        
+        # Get message details
+        from_number = form_data.get('From', '')  # This will be your number +918449035579
+        body = form_data.get('Body', '')
+        media_url = form_data.get('MediaUrl0')
+        filename = form_data.get('MediaFilename0')
+
+        print(f"Received message from: {from_number}")
+        print(f"Message: {body}")
+
+        # Handle document upload if media is present
+        if media_url and filename:
+            await handle_document_upload(from_number, media_url, filename)
+            return {"success": True}
+
+        # Handle confirmation response
+        if body.lower() == 'yes' and from_number in pending_confirmations:
+            doc_info = pending_confirmations[from_number]
+            add_documents(
+                texts=[doc_info['text']], 
+                metadatas=[{"source": doc_info['filename']}]
+            )
+            await send_whatsapp_message(from_number, 
+                f"Document '{doc_info['filename']}' has been added to the knowledge base!")
+            del pending_confirmations[from_number]
+            return {"success": True}
+
+        # Handle regular query
+        if from_number not in pending_confirmations:
+            result = process_query(body)
+            response = result["messages"][-1].content if result.get("messages") else "I couldn't process your query."
+            await send_whatsapp_message(from_number, response)
+
+        return {"success": True}
+
+    except Exception as e:
+        print(f"Error in webhook: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e)) 

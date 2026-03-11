@@ -1,90 +1,73 @@
-# System Design RAG API
+# System Design Assistant with WhatsApp Integration
 
-A Retrieval-Augmented Generation (RAG) system built with LangGraph for querying information about System Design concepts, patterns, and best practices from "System Design Interview" by Alex Xu and "Designing Data-Intensive Applications."
+<div align="center">
+  <img src="/cover.png" alt="System Design Assistant Cover" width="100%"/>
+</div>
 
-## Features
+An AI-powered system design assistant that combines RAG (Retrieval Augmented Generation) with WhatsApp integration for easy access to system design knowledge and best practices.
 
-- **Intelligent Query Processing**: Uses LangGraph for structured conversation flow with question rewriting, classification, and routing
-- **Real-time Streaming**: Supports Server-Sent Events (SSE) for real-time responses
-- **Advanced RAG Pipeline**: Combines Pinecone vector search with Tavily online research as a fallback
-- **Context-Aware Responses**: Maintains conversation context via thread-based memory
-- **Automatic Research**: Falls back to online search when the knowledge base lacks relevant documents
-- **System Design Focus**: Specialized in system design, distributed systems, and software architecture
+## 🚀 Features
 
-## Project Structure
+### Currently Available
 
-```
-AI_Agents_For_Socials_/
-├── client/                        # Next.js frontend
-│   ├── src/
-│   │   ├── app/
-│   │   │   ├── layout.tsx         # Root layout
-│   │   │   ├── page.tsx           # Main chat page
-│   │   │   └── globals.css        # Global styles
-│   │   ├── components/
-│   │   │   ├── ChatWindow.tsx     # Chat message list
-│   │   │   ├── MessageBubble.tsx  # User/assistant messages
-│   │   │   ├── TextArea.tsx       # Input field
-│   │   │   ├── SearchResults.tsx  # Tavily search results
-│   │   │   ├── MarkdownRenderer.tsx
-│   │   │   ├── ArrowIcon.tsx
-│   │   │   └── Output.tsx
-│   │   └── types/
-│   │       ├── stream.ts          # SSE stream types
-│   │       └── types.ts           # Shared types
-│   ├── package.json
-│   ├── tailwind.config.ts
-│   └── tsconfig.json
-├── server/                        # FastAPI backend
-│   ├── app/
-│   │   ├── main.py                # FastAPI entry point
-│   │   ├── config.py              # Configuration settings
-│   │   ├── models/
-│   │   │   └── schemas.py         # Pydantic models
-│   │   ├── routes/
-│   │   │   └── query.py           # API endpoints
-│   │   ├── services/
-│   │   │   ├── rag.py             # RAG service
-│   │   │   ├── vector_store.py    # Pinecone vector store
-│   │   │   └── graph.py           # LangGraph workflow
-│   │   └── utils/
-│   │       └── helpers.py         # Utility functions
-│   ├── requirements.txt           # Python dependencies
-│   ├── Dockerfile                 # Container configuration
-│   ├── .dockerignore
-│   └── README.md                  # Server-specific docs
-└── README.md                      # This file
-```
+- ✅ **WhatsApp Integration**: Query the assistant directly through WhatsApp
+- ✅ **Document Processing**: Upload PDF/DOCX files for knowledge base expansion
+- ✅ **RAG Pipeline**: Smart retrieval and response generation
+- ✅ **API Endpoints**: RESTful and streaming interfaces
+- ✅ **Docker Support**: Easy deployment with Docker
 
-## Tech Stack
+### 🚧 In Development
 
-| Layer     | Technology                                       |
-| --------- | ------------------------------------------------ |
-| Frontend  | Next.js 15, React 19, TypeScript, Tailwind CSS   |
-| Backend   | FastAPI, Python 3.12                             |
-| RAG       | LangGraph, LangChain, OpenAI                    |
-| Vector DB | Pinecone                                         |
-| Search    | Tavily                                           |
+- 🔄 **Multi-language Support**: Support for different languages (Coming Soon)
+- 🔄 **Voice Messages**: WhatsApp voice message processing
+- 🔄 **Image Generation**: System architecture diagram generation
+- 🔄 **Advanced Analytics**: Usage tracking and insights
 
-## Prerequisites
+## 🛠️ Tech Stack
+
+- FastAPI
+- LangGraph
+- OpenAI
+- Pinecone
+- Twilio
+- Docker
+
+## 📱 WhatsApp Demo
+
+<div align="center">
+  <img src="/whatsapp.png" alt="WhatsApp Integration Demo" width="300"/>
+</div>
+
+Try it yourself:
+
+1. Send message to: **+14155238886**
+2. Ask any system design question
+3. Upload system design documents
+
+## 🔧 Development Setup
+
+### Prerequisites
 
 - Python 3.12+
-- Node.js 18+
-- API keys for: **OpenAI**, **Pinecone**, **Tavily**
-- Docker (optional, for containerized deployment)
+- Docker
+- API Keys:
+  - OpenAI
+  - Pinecone
+  - Twilio
 
-## Setup Instructions
+### Quick Start
 
-### 1. Backend (Server)
+````bash
+# Clone repository
+git clone <repository-url>
 
-```bash
+# Setup environment
 cd server
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
-```
 
-Create a `.env` file in the `server/` directory:
+# Configure environment variables
+cp .env.example .env
+# Add your API keys to .env
 
 ```env
 # OpenAI
@@ -101,14 +84,8 @@ TAVILY_API_KEY=your_tavily_key
 
 # Model settings
 EMBEDDING_MODEL=text-embedding-3-small
-LLM_MODEL=gpt-4o-mini
-
-# LangSmith (optional)
-LANGSMITH_API_KEY=
-LANGSMITH_PROJECT=
-LANGSMITH_ENDPOINT=
-LANGSMITH_TRACING=
-```
+LLM_MODEL=gpt-4-turbo-preview
+````
 
 Start the server:
 
@@ -124,109 +101,146 @@ npm install
 npm run dev
 ```
 
-The frontend will be available at `http://localhost:3000` and connects to the backend at `http://localhost:8000`.
+## 📚 Documentation
 
-### 3. Docker (Server Only)
+- [Server Documentation](server/README.md)
+- [API Documentation](https://your-domain.com/docs) (when server is running)
+
+## 🌟 Key Features in Detail
+
+### WhatsApp Integration
+
+- Direct messaging interface
+- Document upload support
+- Context-aware conversations
+- Automatic error handling
+
+### RAG Implementation
+
+- Smart document processing
+- Vector-based retrieval
+- Context-aware responses
+- Fallback research capability
+
+### Document Processing
+
+- PDF support
+- DOCX support
+- Text extraction
+- Knowledge base integration
+
+## 🔜 Roadmap
+
+### Phase 1 (Current)
+
+- ✅ Basic WhatsApp integration
+- ✅ Document upload
+- ✅ RAG implementation
+- ✅ Docker support
+
+### Phase 2 (In Progress)
+
+- 🔄 Voice message support
+- 🔄 Multi-language capabilities
+- 🔄 Image generation
+- 🔄 Enhanced error handling
+
+### Phase 3 (Planned)
+
+- 📋 Advanced analytics
+- 📋 Custom training data
+- 📋 API rate limiting
+
+## 🤝 Contributing
+
+### Frontend Development
+
+We welcome frontend contributions! The project needs a modern, responsive web interface.
+
+#### Planned Frontend Features
+
+1. **Core Features**
+
+- 🎯 Real-time chat interface
+- 🎯 Document upload UI
+- 🎯 Response streaming display
+- 🎯 Syntax highlighting for code
+- 🎯 Dark/Light theme support
+
+2. **Advanced Features**
+
+- 🎯 System design diagram viewer
+- 🎯 Chat history management
+- 🎯 Document library interface
+- 🎯 User preferences settings
+- 🎯 Mobile-responsive design
+
+#### Tech Stack Requirements
+
+- React/Next.js
+- TypeScript
+- Tailwind CSS
+- WebSocket/SSE support
+- Component library (MUI/Chakra UI)
+
+#### Getting Started with Frontend
+
+1. Setup development:
 
 ```bash
-cd server
-docker build -t system-design-rag:latest .
-docker run -d -p 8000:8000 --env-file .env system-design-rag:latest
+# Clone the repository
+git clone https://github.com/ankitmalik84/AI_Agents_For_Socials_.git
+
+# Navigate to frontend directory
+cd client
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
 ```
 
-## API Endpoints
+2. Key areas for contribution:
 
-### POST `/invoke`
+- Component development
+- State management
+- API integration
+- UI/UX improvements
+- Testing implementation
 
-Non-streaming query endpoint.
+3. Design guidelines:
 
-**Request:**
+- Modern, clean interface
+- Responsive design
+- Accessibility compliance
+- Performance optimization
 
-```json
-{
-  "content": "What is load balancing?",
-  "thread_id": "optional-thread-id"
-}
-```
-
-**Response:**
-
-```json
-{
-  "answer": "Detailed response about load balancing...",
-  "success": true
-}
-```
-
-### GET `/stream/{message}`
-
-Streaming query endpoint via Server-Sent Events.
-
-**Query Parameters:**
-
-- `thread_id` (optional): For conversation continuity
-
-**SSE Event Types:**
-
-| Event            | Description                      |
-| ---------------- | -------------------------------- |
-| `thread_id`      | New conversation thread ID       |
-| `content`        | Response content chunks          |
-| `search_start`   | Research fallback started        |
-| `search_results` | Tavily research results          |
-| `search_error`   | Research error                   |
-| `end`            | Stream completed                 |
-| `error`          | Error message                    |
-
-## Usage Examples
-
-### Python (Non-Streaming)
-
-```python
-import requests
-
-response = requests.post(
-    "http://localhost:8000/invoke",
-    json={
-        "content": "Explain microservices architecture",
-        "thread_id": None
-    }
-)
-print(response.json())
-```
-
-### JavaScript (Streaming)
-
-```javascript
-const eventSource = new EventSource(
-  "http://localhost:8000/stream/Explain%20microservices%20architecture"
-);
-
-eventSource.addEventListener("content", (event) => {
-  const data = JSON.parse(event.data);
-  console.log(data.content);
-});
-
-eventSource.addEventListener("end", () => {
-  eventSource.close();
-});
-```
-
-## RAG Pipeline
-
-The LangGraph workflow processes queries through these stages:
-
-1. **Question Rewriter** -- Converts follow-up questions into standalone queries
-2. **Question Classifier** -- Determines if the query is about system design
-3. **Router** -- Routes on-topic queries to retrieval, off-topic to a fallback response
-4. **Retrieve** -- Fetches relevant documents from Pinecone
-5. **Retrieval Grader** -- Filters documents by relevance
-6. **Generate / Refine / Research** -- Generates an answer, refines the query for retry (up to 2 attempts), or falls back to Tavily search
-
-## Contributing
+### How to Contribute
 
 1. Fork the repository
-2. Create a feature branch
+2. Create your feature branch
 3. Commit your changes
-4. Push to the branch
+4. Push to your fork
 5. Create a Pull Request
+
+### Development Guidelines
+
+- Follow TypeScript best practices
+- Write unit tests for components
+- Maintain responsive design
+- Document component usage
+- Follow accessibility guidelines
+
+Contributions are welcome!
+
+## 🔗 Links
+
+- [Docker Hub](https://hub.docker.com/u/ankitmalik84)
+
+## 📞 Support
+
+For support:
+
+- Create an issue
+- Contact: ankitmalik844903@gmail.com

@@ -19,3 +19,15 @@ pinecone-client==6.0.0
 # LLM and search
 openai==1.75.0
 tavily-python==0.5.4
+
+# New dependencies
+python-docx>=0.8.11
+PyPDF2>=3.0.0
+
+# Other dependencies
+python-multipart
+
+# Twilio
+twilio>=8.2.0
+aiohttp>=3.8.0  # For async HTTP requests
+
