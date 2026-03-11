@@ -26,19 +26,21 @@ FastAPI server implementation with WhatsApp integration for the System Design As
 
 ```
 services/
-├── rag.py           # RAG pipeline implementation
-├── vector_store.py  # Pinecone operations
-├── graph.py         # LangGraph conversation flow
-└── twilio_service.py # WhatsApp messaging
-```
+├── rag.py             # RAG pipeline implementation
+├── vector_store.py    # Pinecone operations
+├── graph.py           # LangGraph conversation flow
+└── twilio_service.py  # WhatsApp messaging
 
-### API Routes
-
-```
 routes/
-├── query.py          # Query processing endpoints
-├── upload.py         # Document upload handling
-└── twilio_webhook.py # WhatsApp webhook handling
+├── query.py           # Query processing endpoints
+├── upload.py          # Document upload handling
+└── twilio_webhook.py  # WhatsApp webhook handling
+
+models/
+└── schemas.py         # Pydantic data models
+
+utils/
+└── document_processor.py  # PDF/DOCX text extraction
 ```
 
 ## Setup
@@ -105,18 +107,27 @@ Required in `.env`:
 # OpenAI Configuration
 OPENAI_API_KEY=xxx
 EMBEDDING_MODEL=text-embedding-3-small
-LLM_MODEL=gpt-4-turbo-preview
+LLM_MODEL=gpt-4o-mini
 
 # Pinecone Configuration
 PINECONE_API_KEY=xxx
-PINECONE_INDEX_NAME=xxx
+PINECONE_INDEX_NAME=sapiens
 PINECONE_CLOUD=aws
 PINECONE_REGION=us-east-1
+
+# Tavily Configuration
+TAVILY_API_KEY=xxx
 
 # Twilio Configuration
 TWILIO_ACCOUNT_SID=xxx
 TWILIO_AUTH_TOKEN=xxx
 TWILIO_PHONE_NUMBER=xxx
+
+# LangSmith Configuration (optional)
+LANGSMITH_API_KEY=xxx
+LANGSMITH_PROJECT=xxx
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+LANGSMITH_TRACING=true
 ```
 
 ## Development
@@ -192,11 +203,9 @@ docker run -p 8000:8000 --env-file .env ankitmalik84/agent-whatsapp:latest
 docker logs -f container_id
 ```
 
-### Health Checks
+### Root Endpoint
 
-- `/health`: Server status
-- `/metrics`: Performance metrics
-- `/ready`: Readiness probe
+- `GET /`: Server welcome message
 
 ### Monitoring
 

@@ -57,7 +57,7 @@ Try it yourself:
 
 ### Quick Start
 
-````bash
+```bash
 # Clone repository
 git clone <repository-url>
 
@@ -66,8 +66,9 @@ cd server
 pip install -r requirements.txt
 
 # Configure environment variables
-cp .env.example .env
+cp .env .env
 # Add your API keys to .env
+```
 
 ```env
 # OpenAI
@@ -75,7 +76,7 @@ OPENAI_API_KEY=your_openai_key
 
 # Pinecone
 PINECONE_API_KEY=your_pinecone_key
-PINECONE_INDEX_NAME=system-design
+PINECONE_INDEX_NAME=sapiens
 PINECONE_CLOUD=aws
 PINECONE_REGION=us-east-1
 
@@ -84,8 +85,19 @@ TAVILY_API_KEY=your_tavily_key
 
 # Model settings
 EMBEDDING_MODEL=text-embedding-3-small
-LLM_MODEL=gpt-4-turbo-preview
-````
+LLM_MODEL=gpt-4o-mini
+
+# Twilio
+TWILIO_ACCOUNT_SID=your_twilio_sid
+TWILIO_AUTH_TOKEN=your_twilio_token
+TWILIO_PHONE_NUMBER=your_twilio_number
+
+# LangSmith (optional)
+LANGSMITH_API_KEY=your_langsmith_key
+LANGSMITH_PROJECT=your_project
+LANGSMITH_ENDPOINT=https://api.smith.langchain.com
+LANGSMITH_TRACING=true
+```
 
 Start the server:
 
